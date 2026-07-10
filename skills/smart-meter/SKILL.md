@@ -105,31 +105,32 @@ Weighted sum, not average: coherence 35 / cross-ref 30 / accuracy 20 / retrieval
 
 ## Model-economy routing
 
-The blast-radius classification above IS the router - reuse it, don't recompute a separate one.
+The blast-radius classification above IS the router - reuse it, don't recompute a separate one. The tiers ship as **pinned agent definitions** (`agents/grind.md`, `agents/worker.md`, `agents/reviewer.md`) - dispatch the named agent and its model is fixed by the definition, so the cheap tier is guaranteed once you delegate rather than depending on remembering a per-call `model` param (an omitted param silently inherits the main-loop model - usually the most expensive one).
 
 | Stakes | Main loop (user's own click) | Automatic action (yours) |
 |---|---|---|
-| Reversible + high confidence; mechanical / read-only / bulk | leave it; flag only if plainly overkill | fan the grind out to `haiku` subagents |
-| Normal implementation, moderate stakes | leave it | `sonnet` workers for parallel/heavy read work |
-| Irreversible, production, ambiguous, or confidence below bar | flag: worth being on Opus | dispatch an **`opus` review agent** before proceeding |
+| Reversible + high confidence; mechanical / read-only / bulk | leave it; flag only if plainly overkill | dispatch the `grind` agent (pinned `haiku`) |
+| Normal implementation, moderate stakes | leave it | dispatch the `worker` agent (pinned `sonnet`) for parallel/heavy read work |
+| Irreversible, production, ambiguous, or confidence below bar | flag: worth being on Opus | dispatch the `reviewer` agent (pinned `opus`) before proceeding |
 
-**Division of labour:** the user drives their own main-loop model - they switch it in the desktop UI (same picker for effort), not you. Your job is what a mouse-click cannot do: route subagents to the right tier, and dispatch strong review agents where stakes demand it.
+**Division of labour:** the user drives their own main-loop model - they switch it in the desktop UI (same picker for effort), not you. Your job is what a mouse-click cannot do: dispatch the pinned `grind`/`worker`/`reviewer` agents so each task runs on the right tier, and bring in the `reviewer` where stakes demand it.
 
 ### Delegation rules
-- Offload grind to cheap subagents - wide searches, bulk transforms, reading many files to summarise, first drafts -> `haiku`/`sonnet`. Moves those tokens off the main loop.
-- Reserve Opus for the review pass - the final adversarial review before a push, and reasoning on any irreversible step, get an `opus` agent even if the grind ran cheap.
+- Offload grind to the pinned cheap agents - wide searches, bulk transforms, reading many files to summarise, first drafts -> dispatch the `grind` (`haiku`) or `worker` (`sonnet`) agent. Moves those tokens off the main loop, and the tier is fixed by the agent definition.
+- Reserve the strongest tier for the review pass - the final adversarial review before a push, and reasoning on any irreversible step, go to the `reviewer` agent (pinned `opus`) even if the grind ran cheap.
+- The pin is a default, not a cage - if a task is misclassified (looks like grind but needs real reasoning, or vice versa), override the pinned model with a per-invocation `model` on that one dispatch rather than forcing a too-cheap agent through work it will fail or take 3x the turns on.
 - Keep subagent output tight - a subagent returns the conclusion, not file dumps.
 - **Effort has two separate uses - don't conflate them.** (1) The read-out's `effort:` tag is a recommendation TO THE USER for their own session, exactly parallel to the model tag - genuinely actionable (same one-click picker as model), and NOT made redundant by adaptive thinking, which self-tunes reasoning depth on whatever is running - main loop or subagent alike - automatically, regardless of which effort level is set. (2) Separately, don't fuss over YOUR OWN effort turn-by-turn as if it were a lever you personally hold - the one place you do explicitly set `effort` is at subagent dispatch (`low` for a deliberately cheap mechanical stage, `high`+ for the hardest verify stage). Neither use makes the other pointless.
 
 ### Gating rule (never economise into a mistake)
-If the step is **irreversible** or the score is **below the bar**: do NOT let a cheap agent's first pass be the last word. Dispatch an `opus` review agent to check it. Never route a send/delete/deploy/live-data mutation to a cheap model and proceed unreviewed.
+If the step is **irreversible** or the score is **below the bar**: do NOT let a cheap agent's first pass be the last word. Dispatch the `reviewer` agent (pinned `opus`) to check it. Never route a send/delete/deploy/live-data mutation to a cheap model and proceed unreviewed.
 
 ### Mid-build escalation (the hard ceiling, and the compromise) - symmetric, both directions
 No skill or hook can switch the main-loop model itself, not even mid-task, and the read-out only bookends a turn (fires once at response-end) - so on a long multi-step build it will NOT catch a stakes change the moment it happens, in EITHER direction. Token overuse is this skill's own risk axis, not a lesser one than correctness - a long undelegatable stretch burning Opus is exactly the failure mode this exists to catch, so it gets the same active stop as an upward mismatch, not a passive note.
 
 **Needs MORE power mid-build:** STOP before executing that step. In your own text: (1) name what changed and why this step is now Opus/high-effort territory, (2) recommend switching now, (3) offer the fallback of an `opus` review agent if the user would rather not context-switch.
 
-**Needs LESS power mid-build:** (1) delegate first - if the stretch can run as a subagent, dispatch it to `haiku`/`sonnet` right then, no user click needed; (2) only when delegation genuinely isn't possible (needs the full running context you hold), STOP exactly as in the upward case and recommend dropping a tier now.
+**Needs LESS power mid-build:** (1) delegate first - if the stretch can run as a subagent, dispatch it to the `grind`/`worker` agent right then, no user click needed; (2) only when delegation genuinely isn't possible (needs the full running context you hold), STOP exactly as in the upward case and recommend dropping a tier now.
 
 This is the honest ceiling, not a workaround settled for - the most automated version of "tell me when to switch" current tooling allows in either direction. Everything around the stop is automatic (subagent tiering, classification); the click is the one lever only the user holds.
 
