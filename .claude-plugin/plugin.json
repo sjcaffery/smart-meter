@@ -1,0 +1,8 @@
+{
+  "name": "smart-meter",
+  "version": "0.1.0",
+  "description": "Confidence + blast-radius read-out and model-economy routing on every response — flags risky or irreversible actions before they happen and routes grind to pinned cheaper-model subagents.",
+  "author": { "name": "Scott Caffery" },
+  "category": "development",
+  "keywords": ["confidence", "safety", "model-economy", "hooks", "subagents"]
+}
