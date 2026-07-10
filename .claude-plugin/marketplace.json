@@ -1,0 +1,11 @@
+{
+  "name": "smart-meter",
+  "owner": { "name": "Scott Caffery" },
+  "plugins": [
+    {
+      "name": "smart-meter",
+      "source": "./",
+      "description": "Confidence + blast-radius safety read-out and pinned-model subagent routing for Claude Code."
+    }
+  ]
+}

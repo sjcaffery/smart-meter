@@ -10,11 +10,39 @@ A Claude Code skill that runs quietly in the background and does three things on
 
 Net effect: fewer costly mistakes, real token savings happening automatically in the background, and a live recommendation for the one lever only you control - the main model you're running.
 
-## Install (Claude Code, Windows/PowerShell)
+## Install
+
+Smart Meter ships as a Claude Code **plugin**, so one command pulls in the skill, the pinned-model subagents, and the read-out hook together - no manual `settings.json` editing.
+
+> **Windows / PowerShell.** The read-out hook is a PowerShell script (`powershell.exe`), so the auto-append hook runs on Windows. The skill and subagents themselves are cross-platform; only the hook is Windows-specific.
+
+### Recommended - install as a plugin
+
+In any Claude Code session:
+
+```
+/plugin marketplace add sjcaffery/smart-meter
+/plugin install smart-meter@smart-meter
+```
+
+Start a new session (or restart Claude Code) so the skill, agents, and hook load. That's it - every response from then on carries the Smart Meter read-out.
+
+Manage it any time:
+
+```
+/plugin list
+/plugin disable smart-meter
+/plugin uninstall smart-meter@smart-meter
+```
+
+### Manual install (no plugin system)
+
+If you'd rather wire it in by hand, copy the pieces into your user Claude directory:
 
 1. Copy `skills/smart-meter/SKILL.md` to `%USERPROFILE%\.claude\skills\smart-meter\SKILL.md` (create the folders if needed).
-2. Copy `hooks/smart-meter-reminder.ps1` to `%USERPROFILE%\.claude\hooks\smart-meter-reminder.ps1`.
-3. Open `%USERPROFILE%\.claude\settings.json` (create it if it doesn't exist) and add this to the `UserPromptSubmit` hooks array:
+2. Copy the `agents\*.md` files (`grind.md`, `worker.md`, `reviewer.md`) to `%USERPROFILE%\.claude\agents\` - the pinned-model subagents the skill dispatches grind and review work to.
+3. Copy `hooks/smart-meter-reminder.ps1` to `%USERPROFILE%\.claude\hooks\smart-meter-reminder.ps1`.
+4. Open `%USERPROFILE%\.claude\settings.json` (create it if it doesn't exist) and add this to the `UserPromptSubmit` hooks array:
 
 ```json
 {
@@ -42,6 +70,4 @@ Net effect: fewer costly mistakes, real token savings happening automatically in
 
 If you already have other hooks in `settings.json`, add this as a new entry in the `UserPromptSubmit` array rather than replacing what's there, and swap `<you>` for your actual Windows username.
 
-4. Restart Claude Code (or start a new session) so it picks up the new skill and hook.
-
-That's it - every response from then on carries the Smart Meter read-out.
+5. Restart Claude Code (or start a new session) so it picks up the skill, agents, and hook.
