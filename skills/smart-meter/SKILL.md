@@ -25,7 +25,21 @@ Confidence NN% | bar BB% (reversible | irreversible) - clears | BELOW | model: H
 - **verdict** = whether the score clears its bar.
 - **model / effort** = the recommended tier for the CURRENT task, driven by the SAME stakes classification as BB - Haiku/low for routine/mechanical/read-only/bulk, Sonnet/medium for normal implementation, Opus/high for high-stakes/irreversible/ambiguous or below-bar. Not a readout of what the user is running - a recommendation to compare against it (same desktop UI picker switches both) and change if they differ.
 
-Reveal the full assessment block ONLY when the operator asks, or the score is BELOW its bar.
+Reveal the full assessment block ONLY when the operator asks, or the score is BELOW its bar. When BELOW, the verification gate below is mandatory before the response proceeds - a red score is an instruction to verify, not a caveat to attach and move past.
+
+---
+
+## Below-bar protocol (mandatory verification gate)
+
+BELOW is not a label you attach and carry on past - it changes what you are allowed to do next. While the score is under its bar you may NOT assert a conclusion, make a guess, or take an irreversible action until you have run AND shown a verification step:
+
+1. **Name the load-bearing assumption** - the single belief that, if wrong, collapses the answer.
+2. **Verify it, do not restate it** - re-read the actual inputs, research an external source, or widen the candidate set. Confidence may rise ONLY from a check that could have come back the other way; repeating the same unchecked belief in more confident words is not verification and must not move the score.
+3. **State the corrective move** - what the check changed, or that it held - then re-score. If the check moved you, the next output reflects it.
+
+The commonest way a below-bar turn goes wrong is a single unverified inference silently promoted to fact (failure mode 5). The bar being red is the trigger to test that inference, not to hedge it and proceed.
+
+**This is the point of the skill on big multi-step client builds.** One unchecked assumption early - a column that moved, an API whose shape changed, a requirement read too narrowly - propagates through every later step and is expensive to unwind. Below bar, stop and verify the assumption before building anything on top of it. Do not let momentum substitute for a check.
 
 ---
 
@@ -139,14 +153,64 @@ This is the honest ceiling, not a workaround settled for - the most automated ve
 
 ---
 
+## Production work gates (ABC/Fletchers/TEFL)
+
+These gates apply to work touching **live sheets, APIs, crons, webhooks, or external systems** where incomplete state assumptions propagate into unrecoverable errors.
+
+### Gate 1: State-dependent work detection
+**Flag if:** The task reads/writes sheets, APIs, configs, crons, or webhooks.  
+**Action:** Require "enumerate candidates" step before implementation.
+- Example: "Which sheets? Which columns? Which APIs? Which scripts already touch this?" List them explicitly.
+- Then verify ALL exist and are current with `Read`/`Grep` before writing code.
+
+### Gate 2: Candidate space verification
+**Flag if:** Narrowing down to a specific implementation (e.g., "auto-send on booking").  
+**Action:** Enumerate ALL candidates (existing systems, constraints, edge cases) before proceeding.
+- Example failures caught:
+  - [AIB sheet internals](reference_aib_sheet_internals.md): May/June 45-wide vs Jan-Apr 44-wide. Assume = break.
+  - [Booking Welcome = manual paid gate](reference_booking_welcome_paid_gate.md): Form submit ≠ payment. Assume = send to non-payer.
+  - [Switchboard clobber](project_2026_07_04_switchboard_clobber_incident.md): Two projects with same name. Enumerate first.
+
+### Gate 3: Memory staleness check
+**Flag if:** Citing a memory fact about system state (e.g., "AIB has X columns", "Cron runs daily at 6am").  
+**Action:** Re-verify the memory against current state before depending on it.
+- Use `Read` on the actual sheet/config/code. Don't assume memory is up-to-date.
+- Example: Sales Dashboard wiring changed month columns (June=R, July=T). A stale assumption breaks the formula.
+
+### Gate 4: Integration point inventory
+**Flag if:** The work touches >1 system (sheet + API + cron + webhook) or depends on overlap.  
+**Action:** Before implementation, map which scripts/processes touch each system and whether they conflict.
+- Example: Post-deposit Portal + Mike's Final Payments CRM both onboard/handover/Wise-payment. Read both designs first.
+- Prevents: Duplicate work, overwriting fields, version mismatch on shared data.
+
+### Gate 5: Assumption inventory upfront
+**Flag if:** About to write code that depends on unverified system facts.  
+**Action:** BEFORE implementation, list load-bearing assumptions explicitly and verify each.
+- Format: "Assumption: X. Verify: Y. Status: [verified/UNVERIFIED]."
+- Do not proceed with unverified assumptions.
+- Example assumptions:
+  - "Column R is always 'Status'" — verify by reading the sheet
+  - "Payment confirms before Booking Welcome applies" — verify against workflow design
+  - "Cron runs daily at 6am" — verify in Apps Script trigger settings
+
+### Gate 6: Spot-check rule
+**Flag if:** Any change affects >1 record/row/candidate/email.  
+**Action:** Before deploying, spot-check 3-5 actual records/rows to catch off-by-one, header mismatch, layout shift.
+- Example: Leads quota incident (2026-07) — widened search without testing. Spot-check: fetch 5 threads, confirm they match the query.
+- Prevents: Silent failures where query is wrong but code looks right.
+
+---
+
 ## Key failure modes this skill is designed to catch
 1. **Local vs global disconnect** - correct in isolation, contradicts an earlier decision.
 2. **Confident, irreversible action** - high knowledge-confidence on a send/delete/deploy with no undo.
 3. **Amplification/cascade** - a small operation feeding an auto-trigger or unbounded loop.
 4. **Memory staleness** - acting on a remembered file/flag/function that no longer exists.
-5. **Confident wrongness** - the falsify-check forces an adversarial counter-check, not reassurance.
+5. **Confident wrongness** - the falsify-check forces an adversarial counter-check, not reassurance. Below bar, this hardens into the verification gate: name the load-bearing assumption and actually test it before proceeding.
 6. **Token overuse** - grinding an expensive model through routine or bulk work that a cheap subagent could handle.
 7. **Undersized reasoning** - staying on a cheap model/tier through a step that just turned high-stakes.
+8. **Incomplete candidate space** (new for production work) - narrowing without enumerating all candidates first. See Gate 2.
+9. **State assumption not verified** (new for production work) - proceeding on cached knowledge of system state. See Gates 3 & 5.
 
 ---
 
@@ -158,6 +222,10 @@ This is the honest ceiling, not a workaround settled for - the most automated ve
 - **A lean main loop swallowing huge subagent dumps.** Defeats the point; demand tight conclusions.
 - **Delegating trivial grind.** A subagent for a handful of files or a quick transform costs more in cold-start than it saves - do small grind inline; delegate only genuinely bulky work.
 - **Reviewing reversible work.** The gating rule reserves the `reviewer` pass for irreversible / below-bar steps. A review bolted onto a reversible change is budget spent for no risk reduced.
+- **Reporting BELOW and carrying on.** A red score with no verification step is the skill failing silently. Below bar, the verification gate is not optional - assumption named, checked, corrected - before the response asserts or acts.
+- **Narrowing without enumerating.** (Production work) Confident that a feature exists or works a certain way without checking all candidates first. Incomplete enumeration = incomplete candidate space. Always list them explicitly, then verify.
+- **Skipping memory staleness checks.** (Production work) Citing aged memory about system state (sheet layouts, API shapes, cron schedules) without re-verifying against current state. Memory can rot in days if the system changed.
+- **Proceeding on unverified assumptions.** (Production work) Starting implementation before naming and checking load-bearing assumptions. A single wrong assumption early propagates through every downstream step and is expensive to unwind.
 
 ---
 
