@@ -29,17 +29,64 @@ Reveal the full assessment block ONLY when the operator asks, or the score is BE
 
 ---
 
-## Below-bar protocol (mandatory verification gate)
+## Below-bar protocol (mandatory verification gate with behavioral forcing)
 
-BELOW is not a label you attach and carry on past - it changes what you are allowed to do next. While the score is under its bar you may NOT assert a conclusion, make a guess, or take an irreversible action until you have run AND shown a verification step:
+BELOW is not a label you attach and carry on past - it changes what you are allowed to do next. While the score is under its bar you **MUST** execute this sequence before proceeding:
 
+### Behavioral directives (non-negotiable):
+1. **MUST auto-expand the assessment block** - do not proceed with one-line meter only
+2. **MUST trigger research/lookup** (see Research Trigger section below):
+   - Search memory for relevant prior learning on this task type (e.g., `[[20-questions-strategy]]`, `[[code-review-patterns]]`, `[[estimation-methods]]`)
+   - If memory exists: apply it immediately to reconsider your approach
+   - If memory doesn't exist: use WebSearch or Agent to research best practices for this specific problem
+   - Document findings in memory for cross-session reuse
+3. **MUST reconsider your approach** - ask clarifying questions, shift strategy, or explicitly state why you are proceeding despite low confidence
+4. **MUST NOT assert a conclusion, make a guess, or take an irreversible action** until verification is complete
+5. **If irreversible (85%): CANNOT proceed without explicit user approval**
+
+### Verification steps (when research is complete):
 1. **Name the load-bearing assumption** - the single belief that, if wrong, collapses the answer.
-2. **Verify it, do not restate it** - re-read the actual inputs, research an external source, or widen the candidate set. Confidence may rise ONLY from a check that could have come back the other way; repeating the same unchecked belief in more confident words is not verification and must not move the score.
+2. **Verify it, do not restate it** - re-read the actual inputs, research an external source, widen the candidate set, or apply domain strategy from research. Confidence may rise ONLY from a check that could have come back the other way; repeating the same unchecked belief in more confident words is not verification and must not move the score.
 3. **State the corrective move** - what the check changed, or that it held - then re-score. If the check moved you, the next output reflects it.
 
 The commonest way a below-bar turn goes wrong is a single unverified inference silently promoted to fact (failure mode 5). The bar being red is the trigger to test that inference, not to hedge it and proceed.
 
 **This is the point of the skill on big multi-step client builds.** One unchecked assumption early - a column that moved, an API whose shape changed, a requirement read too narrowly - propagates through every later step and is expensive to unwind. Below bar, stop and verify the assumption before building anything on top of it. Do not let momentum substitute for a check.
+
+---
+
+## Research trigger (when BELOW bar)
+
+Low confidence signals a knowledge gap. Research closes it and compounds across sessions.
+
+### Trigger (automatic when BELOW):
+1. **Search memory first** — look for a related memory file on this task type:
+   - Pattern-matching: if guessing games, search for `[[20-questions-strategy]]`; if code-reviewing, search for `[[code-review-patterns]]`; if estimating, `[[estimation-methods]]`
+   - Memory naming convention: task_type-knowledge or task-strategy
+   - Apply any memory directly to reconsider the current approach
+2. **If memory missing: research the gap** — use WebSearch or an Agent to fetch domain strategy/best practices for this specific problem type
+   - Example: low confidence on game-guessing → search "20 questions strategy" → find genre-branching heuristics → apply to next questions
+   - Example: low confidence on code architecture → search "microservice patterns" or "API design" → bring findings into design reconsideration
+3. **Document findings in memory** — store learnings under a persistent name so they compound:
+   - Format: `task-type_knowledge.md` or `task-strategy_name.md` with the `[[name]]` registered in MEMORY.md
+   - Findings accessible in future sessions/projects on the same task type
+   - Over time, confidence on repeated task types should rise as memory builds
+
+### Split the gap: reducible vs irreducible (do this BEFORE accepting a BELOW score)
+A confidence number is a blend of two different uncertainties. Decompose it before committing:
+- **Reducible (epistemic):** load-bearing parts a tool CAN close — a checkable fact, your own hazy recall of something public, a file to read, code to run, a doc to fetch. If any load-bearing part is reducible AND a tool is available AND the stakes justify the cost, **close it before committing.** Committing on a checkable fact you never checked is the core failure this catches.
+- **Irreducible (aleatory):** parts no lookup can settle — a genuinely unknowable choice, hidden state you have no channel to, a future event. Research cannot move this; name it as irreducible and stop pretending more thinking will help. Only new external input, or accepting the risk, resolves it.
+- **The number hides the split.** "64%" can be 90% reducible (go look it up) or 90% irreducible (genuinely can't know) — and BELOW means opposite things in each case: *act (verify)* vs *gather input or accept the risk*. State which, don't report one blended figure.
+- **Do not let task framing cap your evidence sources.** A constraint on how you may ACT (a game's yes/no rule, "the user only gave me X", a workflow limit) does NOT constrain how you may privately VERIFY. Checking a public fact to calibrate your own recall is not cheating the task — it is doing it honestly. The lever that raises a reducible gap is almost always a tool call you already have, not more introspection.
+
+### Persistence across sessions:
+- Low-confidence patterns trigger research → findings saved to memory → reused in later sessions
+- Same session: confidence may rise after research; re-score and output the improved meter
+- Later sessions: consult memory FIRST before doing new research — reuse validated learnings
+- Pattern: task_type_method → research once → memory → apply every session thereafter
+
+### Gating rule:
+Do not proceed with BELOW score until research is complete and verification is done. The research may raise confidence above bar; if it does, re-score and proceed. If it remains BELOW after research + verification, halt irreversible actions and ask for user approval.
 
 ---
 
@@ -211,6 +258,11 @@ These gates apply to work touching **live sheets, APIs, crons, webhooks, or exte
 7. **Undersized reasoning** - staying on a cheap model/tier through a step that just turned high-stakes.
 8. **Incomplete candidate space** (new for production work) - narrowing without enumerating all candidates first. See Gate 2.
 9. **State assumption not verified** (new for production work) - proceeding on cached knowledge of system state. See Gates 3 & 5.
+10. **Passive transparency, no behavior change** (new) - reporting BELOW but not forcing reconsideration, research, or verification. The meter must drive action, not just display.
+11. **Research skipped when BELOW** (new) - no domain knowledge lookup when confidence is low. Low confidence = knowledge gap = should research before proceeding.
+12. **Research not persisted** (new) - findings from low-confidence research vanish instead of building in memory for cross-session reuse.
+13. **Proceeding past BELOW without approval** (new, irreversible) - asserting conclusions or taking irreversible actions while still BELOW bar. The behavioral MUST directives prevent this.
+14. **Reducible gap left unclosed** (new) - a BELOW score whose load-bearing uncertainty was a *checkable* fact (own hazy recall, a readable file, a web-verifiable claim), committed anyway without running the available tool. Distinct from #11: not "no research at all" but "didn't separate the tool-closable part of the gap from the genuinely-unknowable part and close it." Often caused by letting the task's own constraints (a game's move-set, "only what the user gave me") silently cap evidence-gathering that was never actually barred.
 
 ---
 
@@ -226,6 +278,11 @@ These gates apply to work touching **live sheets, APIs, crons, webhooks, or exte
 - **Narrowing without enumerating.** (Production work) Confident that a feature exists or works a certain way without checking all candidates first. Incomplete enumeration = incomplete candidate space. Always list them explicitly, then verify.
 - **Skipping memory staleness checks.** (Production work) Citing aged memory about system state (sheet layouts, API shapes, cron schedules) without re-verifying against current state. Memory can rot in days if the system changed.
 - **Proceeding on unverified assumptions.** (Production work) Starting implementation before naming and checking load-bearing assumptions. A single wrong assumption early propagates through every downstream step and is expensive to unwind.
+- **Reporting BELOW without forcing behavior change.** Outputting "Confidence 42% | bar 70% | BELOW" and then proceeding as if the meter were just a label. The BELOW signal MUST trigger reconsideration, research, and verification before proceeding. Transparency without action is the meter failing silently.
+- **Skipping research when BELOW.** Low confidence = knowledge gap. Not researching domain strategy or prior learning leaves the gap unfilled. Memory + WebSearch close it; proceeding without is betting on unvalidated reasoning.
+- **Research findings not persisted.** Finding a 20-questions strategy that improves your game, then discarding it instead of saving to memory. Learnings must accumulate across sessions; one-off research is wasted.
+- **Proceeding past BELOW without approval (irreversible).** Taking a send/delete/deploy action while confidence is still 45% and below the 85% irreversible bar. The CANNOT directives prevent this; they are not advisory.
+- **Letting task framing cap evidence sources.** Treating a constraint on how you may ACT (a game's yes/no rule, "the user only gave me X") as if it also barred private verification. Checking a public fact to calibrate your own recall is not cheating the task. Split the BELOW gap into reducible (close it with a tool now) vs irreducible (accept the risk or gather input); don't report one blended number that hides which - and if the reducible part is load-bearing, close it before you commit. *(Live example: a 20-questions endgame scored 64% BELOW where a chunk of the gap was own-recall of a public game fact one WebSearch would have settled - committed without the lookup because the game's "yes/no only" rule was wrongly read as barring all evidence-gathering.)*
 
 ---
 
