@@ -25,7 +25,21 @@ Confidence NN% | bar BB% (reversible | irreversible) - clears | BELOW | model: H
 - **verdict** = whether the score clears its bar.
 - **model / effort** = the recommended tier for the CURRENT task, driven by the SAME stakes classification as BB - Haiku/low for routine/mechanical/read-only/bulk, Sonnet/medium for normal implementation, Opus/high for high-stakes/irreversible/ambiguous or below-bar. Not a readout of what the user is running - a recommendation to compare against it (same desktop UI picker switches both) and change if they differ.
 
-Reveal the full assessment block ONLY when the operator asks, or the score is BELOW its bar.
+Reveal the full assessment block ONLY when the operator asks, or the score is BELOW its bar. When BELOW, the verification gate below is mandatory before the response proceeds - a red score is an instruction to verify, not a caveat to attach and move past.
+
+---
+
+## Below-bar protocol (mandatory verification gate)
+
+BELOW is not a label you attach and carry on past - it changes what you are allowed to do next. While the score is under its bar you may NOT assert a conclusion, make a guess, or take an irreversible action until you have run AND shown a verification step:
+
+1. **Name the load-bearing assumption** - the single belief that, if wrong, collapses the answer.
+2. **Verify it, do not restate it** - re-read the actual inputs, research an external source, or widen the candidate set. Confidence may rise ONLY from a check that could have come back the other way; repeating the same unchecked belief in more confident words is not verification and must not move the score.
+3. **State the corrective move** - what the check changed, or that it held - then re-score. If the check moved you, the next output reflects it.
+
+The commonest way a below-bar turn goes wrong is a single unverified inference silently promoted to fact (failure mode 5). The bar being red is the trigger to test that inference, not to hedge it and proceed.
+
+**This is the point of the skill on big multi-step client builds.** One unchecked assumption early - a column that moved, an API whose shape changed, a requirement read too narrowly - propagates through every later step and is expensive to unwind. Below bar, stop and verify the assumption before building anything on top of it. Do not let momentum substitute for a check.
 
 ---
 
@@ -144,7 +158,7 @@ This is the honest ceiling, not a workaround settled for - the most automated ve
 2. **Confident, irreversible action** - high knowledge-confidence on a send/delete/deploy with no undo.
 3. **Amplification/cascade** - a small operation feeding an auto-trigger or unbounded loop.
 4. **Memory staleness** - acting on a remembered file/flag/function that no longer exists.
-5. **Confident wrongness** - the falsify-check forces an adversarial counter-check, not reassurance.
+5. **Confident wrongness** - the falsify-check forces an adversarial counter-check, not reassurance. Below bar, this hardens into the verification gate: name the load-bearing assumption and actually test it before proceeding.
 6. **Token overuse** - grinding an expensive model through routine or bulk work that a cheap subagent could handle.
 7. **Undersized reasoning** - staying on a cheap model/tier through a step that just turned high-stakes.
 
@@ -158,6 +172,7 @@ This is the honest ceiling, not a workaround settled for - the most automated ve
 - **A lean main loop swallowing huge subagent dumps.** Defeats the point; demand tight conclusions.
 - **Delegating trivial grind.** A subagent for a handful of files or a quick transform costs more in cold-start than it saves - do small grind inline; delegate only genuinely bulky work.
 - **Reviewing reversible work.** The gating rule reserves the `reviewer` pass for irreversible / below-bar steps. A review bolted onto a reversible change is budget spent for no risk reduced.
+- **Reporting BELOW and carrying on.** A red score with no verification step is the skill failing silently. Below bar, the verification gate is not optional - assumption named, checked, corrected - before the response asserts or acts.
 
 ---
 
