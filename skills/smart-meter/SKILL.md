@@ -29,17 +29,57 @@ Reveal the full assessment block ONLY when the operator asks, or the score is BE
 
 ---
 
-## Below-bar protocol (mandatory verification gate)
+## Below-bar protocol (mandatory verification gate with behavioral forcing)
 
-BELOW is not a label you attach and carry on past - it changes what you are allowed to do next. While the score is under its bar you may NOT assert a conclusion, make a guess, or take an irreversible action until you have run AND shown a verification step:
+BELOW is not a label you attach and carry on past - it changes what you are allowed to do next. While the score is under its bar you **MUST** execute this sequence before proceeding:
 
+### Behavioral directives (non-negotiable):
+1. **MUST auto-expand the assessment block** - do not proceed with one-line meter only
+2. **MUST trigger research/lookup** (see Research Trigger section below):
+   - Search memory for relevant prior learning on this task type (e.g., `[[20-questions-strategy]]`, `[[code-review-patterns]]`, `[[estimation-methods]]`)
+   - If memory exists: apply it immediately to reconsider your approach
+   - If memory doesn't exist: use WebSearch or Agent to research best practices for this specific problem
+   - Document findings in memory for cross-session reuse
+3. **MUST reconsider your approach** - ask clarifying questions, shift strategy, or explicitly state why you are proceeding despite low confidence
+4. **MUST NOT assert a conclusion, make a guess, or take an irreversible action** until verification is complete
+5. **If irreversible (85%): CANNOT proceed without explicit user approval**
+
+### Verification steps (when research is complete):
 1. **Name the load-bearing assumption** - the single belief that, if wrong, collapses the answer.
-2. **Verify it, do not restate it** - re-read the actual inputs, research an external source, or widen the candidate set. Confidence may rise ONLY from a check that could have come back the other way; repeating the same unchecked belief in more confident words is not verification and must not move the score.
+2. **Verify it, do not restate it** - re-read the actual inputs, research an external source, widen the candidate set, or apply domain strategy from research. Confidence may rise ONLY from a check that could have come back the other way; repeating the same unchecked belief in more confident words is not verification and must not move the score.
 3. **State the corrective move** - what the check changed, or that it held - then re-score. If the check moved you, the next output reflects it.
 
 The commonest way a below-bar turn goes wrong is a single unverified inference silently promoted to fact (failure mode 5). The bar being red is the trigger to test that inference, not to hedge it and proceed.
 
 **This is the point of the skill on big multi-step client builds.** One unchecked assumption early - a column that moved, an API whose shape changed, a requirement read too narrowly - propagates through every later step and is expensive to unwind. Below bar, stop and verify the assumption before building anything on top of it. Do not let momentum substitute for a check.
+
+---
+
+## Research trigger (when BELOW bar)
+
+Low confidence signals a knowledge gap. Research closes it and compounds across sessions.
+
+### Trigger (automatic when BELOW):
+1. **Search memory first** — look for a related memory file on this task type:
+   - Pattern-matching: if guessing games, search for `[[20-questions-strategy]]`; if code-reviewing, search for `[[code-review-patterns]]`; if estimating, `[[estimation-methods]]`
+   - Memory naming convention: task_type-knowledge or task-strategy
+   - Apply any memory directly to reconsider the current approach
+2. **If memory missing: research the gap** — use WebSearch or an Agent to fetch domain strategy/best practices for this specific problem type
+   - Example: low confidence on game-guessing → search "20 questions strategy" → find genre-branching heuristics → apply to next questions
+   - Example: low confidence on code architecture → search "microservice patterns" or "API design" → bring findings into design reconsideration
+3. **Document findings in memory** — store learnings under a persistent name so they compound:
+   - Format: `task-type_knowledge.md` or `task-strategy_name.md` with the `[[name]]` registered in MEMORY.md
+   - Findings accessible in future sessions/projects on the same task type
+   - Over time, confidence on repeated task types should rise as memory builds
+
+### Persistence across sessions:
+- Low-confidence patterns trigger research → findings saved to memory → reused in later sessions
+- Same session: confidence may rise after research; re-score and output the improved meter
+- Later sessions: consult memory FIRST before doing new research — reuse validated learnings
+- Pattern: task_type_method → research once → memory → apply every session thereafter
+
+### Gating rule:
+Do not proceed with BELOW score until research is complete and verification is done. The research may raise confidence above bar; if it does, re-score and proceed. If it remains BELOW after research + verification, halt irreversible actions and ask for user approval.
 
 ---
 
@@ -153,6 +193,54 @@ This is the honest ceiling, not a workaround settled for - the most automated ve
 
 ---
 
+## Production work gates (ABC/Fletchers/TEFL)
+
+These gates apply to work touching **live sheets, APIs, crons, webhooks, or external systems** where incomplete state assumptions propagate into unrecoverable errors.
+
+### Gate 1: State-dependent work detection
+**Flag if:** The task reads/writes sheets, APIs, configs, crons, or webhooks.  
+**Action:** Require "enumerate candidates" step before implementation.
+- Example: "Which sheets? Which columns? Which APIs? Which scripts already touch this?" List them explicitly.
+- Then verify ALL exist and are current with `Read`/`Grep` before writing code.
+
+### Gate 2: Candidate space verification
+**Flag if:** Narrowing down to a specific implementation (e.g., "auto-send on booking").  
+**Action:** Enumerate ALL candidates (existing systems, constraints, edge cases) before proceeding.
+- Example failures caught:
+  - [AIB sheet internals](reference_aib_sheet_internals.md): May/June 45-wide vs Jan-Apr 44-wide. Assume = break.
+  - [Booking Welcome = manual paid gate](reference_booking_welcome_paid_gate.md): Form submit ≠ payment. Assume = send to non-payer.
+  - [Switchboard clobber](project_2026_07_04_switchboard_clobber_incident.md): Two projects with same name. Enumerate first.
+
+### Gate 3: Memory staleness check
+**Flag if:** Citing a memory fact about system state (e.g., "AIB has X columns", "Cron runs daily at 6am").  
+**Action:** Re-verify the memory against current state before depending on it.
+- Use `Read` on the actual sheet/config/code. Don't assume memory is up-to-date.
+- Example: Sales Dashboard wiring changed month columns (June=R, July=T). A stale assumption breaks the formula.
+
+### Gate 4: Integration point inventory
+**Flag if:** The work touches >1 system (sheet + API + cron + webhook) or depends on overlap.  
+**Action:** Before implementation, map which scripts/processes touch each system and whether they conflict.
+- Example: Post-deposit Portal + Mike's Final Payments CRM both onboard/handover/Wise-payment. Read both designs first.
+- Prevents: Duplicate work, overwriting fields, version mismatch on shared data.
+
+### Gate 5: Assumption inventory upfront
+**Flag if:** About to write code that depends on unverified system facts.  
+**Action:** BEFORE implementation, list load-bearing assumptions explicitly and verify each.
+- Format: "Assumption: X. Verify: Y. Status: [verified/UNVERIFIED]."
+- Do not proceed with unverified assumptions.
+- Example assumptions:
+  - "Column R is always 'Status'" — verify by reading the sheet
+  - "Payment confirms before Booking Welcome applies" — verify against workflow design
+  - "Cron runs daily at 6am" — verify in Apps Script trigger settings
+
+### Gate 6: Spot-check rule
+**Flag if:** Any change affects >1 record/row/candidate/email.  
+**Action:** Before deploying, spot-check 3-5 actual records/rows to catch off-by-one, header mismatch, layout shift.
+- Example: Leads quota incident (2026-07) — widened search without testing. Spot-check: fetch 5 threads, confirm they match the query.
+- Prevents: Silent failures where query is wrong but code looks right.
+
+---
+
 ## Key failure modes this skill is designed to catch
 1. **Local vs global disconnect** - correct in isolation, contradicts an earlier decision.
 2. **Confident, irreversible action** - high knowledge-confidence on a send/delete/deploy with no undo.
@@ -161,6 +249,12 @@ This is the honest ceiling, not a workaround settled for - the most automated ve
 5. **Confident wrongness** - the falsify-check forces an adversarial counter-check, not reassurance. Below bar, this hardens into the verification gate: name the load-bearing assumption and actually test it before proceeding.
 6. **Token overuse** - grinding an expensive model through routine or bulk work that a cheap subagent could handle.
 7. **Undersized reasoning** - staying on a cheap model/tier through a step that just turned high-stakes.
+8. **Incomplete candidate space** (new for production work) - narrowing without enumerating all candidates first. See Gate 2.
+9. **State assumption not verified** (new for production work) - proceeding on cached knowledge of system state. See Gates 3 & 5.
+10. **Passive transparency, no behavior change** (new) - reporting BELOW but not forcing reconsideration, research, or verification. The meter must drive action, not just display.
+11. **Research skipped when BELOW** (new) - no domain knowledge lookup when confidence is low. Low confidence = knowledge gap = should research before proceeding.
+12. **Research not persisted** (new) - findings from low-confidence research vanish instead of building in memory for cross-session reuse.
+13. **Proceeding past BELOW without approval** (new, irreversible) - asserting conclusions or taking irreversible actions while still BELOW bar. The behavioral MUST directives prevent this.
 
 ---
 
@@ -173,6 +267,13 @@ This is the honest ceiling, not a workaround settled for - the most automated ve
 - **Delegating trivial grind.** A subagent for a handful of files or a quick transform costs more in cold-start than it saves - do small grind inline; delegate only genuinely bulky work.
 - **Reviewing reversible work.** The gating rule reserves the `reviewer` pass for irreversible / below-bar steps. A review bolted onto a reversible change is budget spent for no risk reduced.
 - **Reporting BELOW and carrying on.** A red score with no verification step is the skill failing silently. Below bar, the verification gate is not optional - assumption named, checked, corrected - before the response asserts or acts.
+- **Narrowing without enumerating.** (Production work) Confident that a feature exists or works a certain way without checking all candidates first. Incomplete enumeration = incomplete candidate space. Always list them explicitly, then verify.
+- **Skipping memory staleness checks.** (Production work) Citing aged memory about system state (sheet layouts, API shapes, cron schedules) without re-verifying against current state. Memory can rot in days if the system changed.
+- **Proceeding on unverified assumptions.** (Production work) Starting implementation before naming and checking load-bearing assumptions. A single wrong assumption early propagates through every downstream step and is expensive to unwind.
+- **Reporting BELOW without forcing behavior change.** Outputting "Confidence 42% | bar 70% | BELOW" and then proceeding as if the meter were just a label. The BELOW signal MUST trigger reconsideration, research, and verification before proceeding. Transparency without action is the meter failing silently.
+- **Skipping research when BELOW.** Low confidence = knowledge gap. Not researching domain strategy or prior learning leaves the gap unfilled. Memory + WebSearch close it; proceeding without is betting on unvalidated reasoning.
+- **Research findings not persisted.** Finding a 20-questions strategy that improves your game, then discarding it instead of saving to memory. Learnings must accumulate across sessions; one-off research is wasted.
+- **Proceeding past BELOW without approval (irreversible).** Taking a send/delete/deploy action while confidence is still 45% and below the 85% irreversible bar. The CANNOT directives prevent this; they are not advisory.
 
 ---
 
