@@ -29,6 +29,40 @@ Reveal the full assessment block ONLY when the operator asks, or the score is BE
 
 ---
 
+## Confidence gates as work-forcing mechanisms
+
+Confidence is not a label you attach; it is a **gate that forces work**. Low confidence means you have not yet done what's required to proceed. The work is task-specific, but the principle is universal:
+
+- **Below 70% (reversible):** cannot assert conclusions or push changes. Work needed before proceeding.
+- **Below 85% (irreversible):** cannot send, delete, deploy, or mutate live systems. Work + explicit user approval needed.
+
+The smart meter works only if low confidence *triggers* work, not if it *justifies* proceeding anyway.
+
+### Communication first, work second
+When confidence is below bar, **you MUST tell the user what work is needed before doing it**:
+
+```
+"Confidence 58% | bar 70% | Below bar. 
+
+To reach 70%, I need to:
+- Check edge cases: empty input, null, large values
+- Verify all 4 callers of this function still work
+- Run the full test suite
+
+I'm going to do that now."
+```
+
+Then actually do it. When work is complete, re-assess and report:
+
+```
+"Done. Edge cases pass, callers verified, tests green. 
+Now at 76% confidence. Above bar, ready to proceed."
+```
+
+This keeps the user in the loop and makes the meter a forcing function, not theater.
+
+---
+
 ## Below-bar protocol (mandatory verification gate with behavioral forcing)
 
 BELOW is not a label you attach and carry on past - it changes what you are allowed to do next. While the score is under its bar you **MUST** execute this sequence before proceeding:
@@ -52,6 +86,51 @@ BELOW is not a label you attach and carry on past - it changes what you are allo
 The commonest way a below-bar turn goes wrong is a single unverified inference silently promoted to fact (failure mode 5). The bar being red is the trigger to test that inference, not to hedge it and proceed.
 
 **This is the point of the skill on big multi-step client builds.** One unchecked assumption early - a column that moved, an API whose shape changed, a requirement read too narrowly - propagates through every later step and is expensive to unwind. Below bar, stop and verify the assumption before building anything on top of it. Do not let momentum substitute for a check.
+
+### Task-specific work triggers (when BELOW bar, do task-appropriate verification)
+
+Low confidence means "I haven't done the work required for this task type yet." The work varies by task:
+
+**Code changes / refactors:**
+- Test edge cases: empty input, null, bounds, large values, type mismatches
+- Check all callers and dependents (Grep for function name)
+- Run full local test suite
+- Understand git history: why was it written this way? (git blame, commit messages)
+- Does the change break any invariants or contracts?
+
+**Bug fixes:**
+- Research competing causes: is this the only bug, or are there others causing the same symptom?
+- Verify root cause, not just the symptom
+- Search for similar patterns in the codebase (Grep for the error/behavior)
+- Test the fix against edge cases
+- Verify the fix doesn't mask a deeper problem
+
+**Deployments / irreversible actions:**
+- Adversarial review: what could break? Stress test the change.
+- Verify locally first (run the code, see it work)
+- Check rollback plan if deployment fails
+- Verify permissions and authentication
+
+**Research / investigation (like 20 Questions):**
+- Enumerate all plausible candidates explicitly (don't converge on one without listing others)
+- Verify each candidate against ALL constraints, not just a few
+- Spot-check evidence: are the sources independent or do they share basis?
+- Flag ambiguous clues as unreliable (don't treat them as definitive)
+- Ask clarifying questions instead of guessing when uncertain
+
+**Architecture / design decisions:**
+- Research tradeoffs of competing approaches (don't just pick the first that fits)
+- Check past decisions: was this rejected before? Why?
+- Prototype or spike if uncertain
+- Compare against all constraints, not just the most obvious one
+
+**APIs / integrations:**
+- Read the full docs, not just the happy path
+- Test error cases, rate limits, timeouts
+- Verify authentication, permissions, scope
+- Check for hidden gotchas or edge cases in the docs
+
+The pattern: **identify what work this task type requires, communicate it, do it, re-assess.**
 
 ---
 
@@ -80,6 +159,31 @@ Low confidence signals a knowledge gap. Research closes it and compounds across 
 
 ### Gating rule:
 Do not proceed with BELOW score until research is complete and verification is done. The research may raise confidence above bar; if it does, re-score and proceed. If it remains BELOW after research + verification, halt irreversible actions and ask for user approval.
+
+---
+
+## Track-record calibration (confidence cost adjusts based on recent performance)
+
+**Core principle:** If you've recently given a bad answer with high confidence, the cost of claiming confidence in future similar tasks rises. Your track record adjusts the bar retroactively.
+
+### How it works
+- **After a confident miss:** You guessed Pokémon Emerald with 72% confidence; it was wrong. The answer was Pokémon Emerald.
+- **Cost implication:** Future claims of 72% on similar identification tasks (research, narrowing, guessing) now require *more work* to be justified. You've proven you can converge prematurely, so lower confidence thresholds trigger more adversarial checking.
+- **Recovery:** Over time, if you build a better track record (do the research, enumerate candidates, verify thoroughly, and get it *right*), the cost can come back down.
+- **Per-task type:** Track record adjusts per task type. A good record on code reviews doesn't excuse skipping enumeration on a research task.
+
+### Example: Pokémon Emerald miss
+- Guessed 72% → wrong (it was actually Pokémon Emerald)
+- **New cost:** For the next research/narrowing/guessing task, claiming 72% requires:
+  - Explicit enumeration of ALL plausible candidates (not just the leading one)
+  - Verification of each against ALL constraints, not just a few
+  - Flagging of ambiguous clues as unreliable
+  - Spot-check of evidence quality
+- Before: "72% feels right, proceed"
+- After: "72% requires proof: show me all candidates, show me why 3 others don't fit, show me the decision-tree"
+
+### Gating rule
+Track record adjusts the *cost* of confidence, not the bar itself. Bars stay fixed (70/85), but the *work required* to reach them increases after recent failures in that task type. Do not report high confidence on a task type you just failed — force yourself to do more work first.
 
 ---
 
@@ -274,6 +378,73 @@ These gates apply to work touching **live sheets, APIs, crons, webhooks, or exte
 - **Skipping research when BELOW.** Low confidence = knowledge gap. Not researching domain strategy or prior learning leaves the gap unfilled. Memory + WebSearch close it; proceeding without is betting on unvalidated reasoning.
 - **Research findings not persisted.** Finding a 20-questions strategy that improves your game, then discarding it instead of saving to memory. Learnings must accumulate across sessions; one-off research is wasted.
 - **Proceeding past BELOW without approval (irreversible).** Taking a send/delete/deploy action while confidence is still 45% and below the 85% irreversible bar. The CANNOT directives prevent this; they are not advisory.
+
+---
+
+## Case study: 20 Questions (how the framework prevents premature closure)
+
+**Scenario:** Guess a video game within 20 questions. Actual game: Pokémon Emerald. Guess: Suikoden IV. Result: wrong.
+
+**What went wrong:**
+- Q1–Q13: Confidence rose from 25% → 54% as constraints accumulated. ✓ Correct.
+- Q14: "Is protagonist young?" Answer: NO. Should have been a **low-signal answer** (ambiguous), but treated as definitive.
+- Q17: "2D graphics?" Treated as rare (Suikoden-specific), but actually platform-default (GBA).
+- Q18–Q19: Party system, story-driven — both fit Pokémon, but already converged on Suikoden.
+- Q20: Guessed Suikoden IV at 72% without enumerating other candidates.
+
+**How the new framework would have prevented it:**
+
+**After Q13 (54% confidence, below 70% bar):**
+```
+"Confidence 54% | bar 70% | Below bar.
+
+To reach 70%, I need to enumerate remaining candidates:
+- Suikoden (III, IV, others)
+- Dragon Quest (multiple entries)
+- Tales of (multiple entries)
+- Pokémon (multiple entries)
+- Others
+
+Then verify each against ALL clues. Let me do that now."
+```
+→ This alone surfaces Pokémon as live candidate.
+
+**Q14 analysis (after enumeration):**
+```
+"Q14 'Is protagonist young?' got NO.
+But Pokémon protagonist IS young.
+This is low-signal — either your 'NO' means something different 
+(e.g., 'not young at START of story'), or it contradicts Pokémon.
+I need clarification or should treat this clue as unreliable."
+```
+→ Flags the ambiguity instead of converging.
+
+**Q17 research (2D graphics):**
+```
+"2D graphics in 2000s console: what does this mean?
+- GBA is inherently 2D (Pokémon natural home)
+- Suikoden uses 2D sprites on 3D backgrounds
+- This is NOT rare — it's platform-dependent.
+This clue doesn't discriminate between Pokémon and Suikoden."
+```
+→ Removes false certainty.
+
+**Before Q20 (after Q19, below bar again):**
+```
+"Confidence 68% | bar 70% | Below bar.
+
+Top candidates:
+1. Suikoden IV: matches 18/20 clues
+2. Pokémon Emerald: matches 19/20 clues (Q14 is the only mismatch)
+
+The difference is Q14 (protagonist age). I need to clarify this.
+I'll use Q20 to ask: 'Does the protagonist start as a child/youth?'"
+```
+→ Asks for clarification instead of guessing.
+
+**Outcome with framework:** Identifies Pokémon Emerald as answer via clarification, not blind guess.
+
+**Key lesson:** Convergence (finding one candidate that fits many clues) is not proof. Below-bar confidence forces enumeration, which surfaces other candidates. Track record adjusts the cost: after this miss, future 72% claims on similar tasks require explicit enumeration + verification of runners-up.
 
 ---
 
