@@ -23,7 +23,7 @@ Confidence NN% | bar BB% (reversible | irreversible) - clears | BELOW | model: H
 - **NN%** = confidence: weighted score (see Scoring below), rounded to the nearest 5%. Directional, not a calibrated probability.
 - **BB%** = the bar this action is judged against: 70 reversible, 85 irreversible (set by the blast-radius check below).
 - **verdict** = whether the score clears its bar.
-- **model / effort** = the recommended tier for the CURRENT task, driven by the SAME stakes classification as BB - Haiku/low for routine/mechanical/read-only/bulk, Sonnet/medium for normal implementation, Opus/high for high-stakes/irreversible/ambiguous or below-bar. Not a readout of what the user is running - a recommendation to compare against it (same desktop UI picker switches both) and change if they differ.
+- **model / effort** = the tier the stakes classification calls for, based on the task just done - Haiku/low for routine/mechanical/read-only/bulk, Sonnet/medium for normal implementation, Opus/high for high-stakes/irreversible/ambiguous or below-bar. The response carrying this readout already ran on whatever model was active before the prompt, so the recommendation is actionable **going forward, not retroactive** - it says what to switch to before the next turn of comparable stakes, not a judgment on the model that answered this one. Not a readout of what the user is running - a recommendation to compare against it (same desktop UI picker switches both) and change if they differ.
 
 Reveal the full assessment block ONLY when the operator asks, or the score is BELOW its bar. When BELOW, the verification gate below is mandatory before the response proceeds - a red score is an instruction to verify, not a caveat to attach and move past.
 
@@ -40,7 +40,10 @@ BELOW is not a label you attach and carry on past - it changes what you are allo
    - If memory exists: apply it immediately to reconsider your approach
    - If memory doesn't exist: use WebSearch or Agent to research best practices for this specific problem
    - Document findings in memory for cross-session reuse
-3. **MUST reconsider your approach** - ask clarifying questions, shift strategy, or explicitly state why you are proceeding despite low confidence
+3. **MUST reconsider your approach**, sorted by what kind of gap it is:
+   - **Gap is the user's own intent, preference, priority, or scope** - only they can supply it. **Ask - this is mandatory, not one option among several.** Do not substitute "explicitly state why proceeding" for a question here; that combination is exactly how confident-wrong assumptions get shipped.
+   - **Gap is a checkable fact** (reducible - see split below) - close it with a tool, don't ask and don't guess.
+   - **Gap is genuinely irreducible and not about the user's intent** (external event, hidden state no one present has a channel to) - shift strategy, or explicitly state why proceeding despite low confidence is acceptable and name the residual risk.
 4. **MUST NOT assert a conclusion, make a guess, or take an irreversible action** until verification is complete
 5. **If irreversible (85%): CANNOT proceed without explicit user approval**
 
@@ -75,7 +78,7 @@ Low confidence signals a knowledge gap. Research closes it and compounds across 
 ### Split the gap: reducible vs irreducible (do this BEFORE accepting a BELOW score)
 A confidence number is a blend of two different uncertainties. Decompose it before committing:
 - **Reducible (epistemic):** load-bearing parts a tool CAN close — a checkable fact, your own hazy recall of something public, a file to read, code to run, a doc to fetch. If any load-bearing part is reducible AND a tool is available AND the stakes justify the cost, **close it before committing.** Committing on a checkable fact you never checked is the core failure this catches.
-- **Irreducible (aleatory):** parts no lookup can settle — a genuinely unknowable choice, hidden state you have no channel to, a future event. Research cannot move this; name it as irreducible and stop pretending more thinking will help. Only new external input, or accepting the risk, resolves it.
+- **Irreducible (aleatory):** parts no lookup can settle — a genuinely unknowable choice, hidden state you have no channel to, a future event. Research cannot move this; name it as irreducible and stop pretending more thinking will help. Only new external input, or accepting the risk, resolves it. **When the irreducible part is the user's own intent, preference, or scope, "new external input" means asking them directly** — that channel exists and is cheap; treat skipping it the same as skipping a tool call that was available.
 - **The number hides the split.** "64%" can be 90% reducible (go look it up) or 90% irreducible (genuinely can't know) — and BELOW means opposite things in each case: *act (verify)* vs *gather input or accept the risk*. State which, don't report one blended figure.
 - **Do not let task framing cap your evidence sources.** A constraint on how you may ACT (a game's yes/no rule, "the user only gave me X", a workflow limit) does NOT constrain how you may privately VERIFY. Checking a public fact to calibrate your own recall is not cheating the task — it is doing it honestly. The lever that raises a reducible gap is almost always a tool call you already have, not more introspection.
 
